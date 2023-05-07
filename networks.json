@@ -1,0 +1,8 @@
+{
+  "sepolia": {
+    "CSGoBets": {
+      "address": "0x8cF18423635c03C08Ba72cf83481E611f8F52ae2",
+      "startBlock": 3438102
+    }
+  }
+}
