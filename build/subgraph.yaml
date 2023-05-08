@@ -1,6 +1,6 @@
 specVersion: 0.0.5
 schema:
-  file: ./schema.graphql
+  file: schema.graphql
 dataSources:
   - kind: ethereum
     name: CSGoBets
@@ -19,7 +19,7 @@ dataSources:
         - Bet
       abis:
         - name: CSGoBets
-          file: ./abis/CSGoBets.json
+          file: CSGoBets/abis/CSGoBets.json
       eventHandlers:
         - event: BetCreated(indexed address,indexed uint256,uint256,uint256,uint256,bool,uint256)
           handler: handleBetCreated
@@ -29,4 +29,4 @@ dataSources:
           handler: handleBetExerciseRequested
         - event: BetJoined(indexed address,indexed uint256,uint256,uint256,uint256)
           handler: handleBetJoined
-      file: ./src/cs-go-bets.ts
+      file: CSGoBets/CSGoBets.wasm

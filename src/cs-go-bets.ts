@@ -3,99 +3,73 @@ import {
   BetExerciseConfirmed as BetExerciseConfirmedEvent,
   BetExerciseRequested as BetExerciseRequestedEvent,
   BetJoined as BetJoinedEvent,
-  BetLeft as BetLeftEvent
-} from "../generated/CSGoBets/CSGoBets"
+  BetLeft as BetLeftEvent,
+} from "../generated/CSGoBets/CSGoBets";
+import { BetLeft } from "../generated/schema";
 import {
-  BetCreated,
-  BetExerciseConfirmed,
-  BetExerciseRequested,
-  BetJoined,
-  BetLeft
-} from "../generated/schema"
+  BIGINT_ONE,
+  getLoserFromBet,
+  getOrCreateBet,
+  getOrCreateUser,
+  getStats,
+} from "./schema";
 
 export function handleBetCreated(event: BetCreatedEvent): void {
-  let entity = new BetCreated(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.creator = event.params.creator
-  entity.CSGoBets_id = event.params.id
-  entity.strike = event.params.strike
-  entity.expiry = event.params.expiry
-  entity.amount = event.params.amount
-  entity.greaterBet = event.params.greaterBet
-  entity.itemId = event.params.itemId
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
+  let user = getOrCreateUser(event.params.creator.toHexString());
+  let bet = getOrCreateBet(event.params.id.toHexString());
+  bet.creator = user.id;
+  bet.strike = event.params.strike;
+  bet.betID = event.params.id;
+  bet.expiry = event.params.expiry;
+  bet.betAmount = event.params.amount;
+  bet.greaterBet = event.params.greaterBet;
+  bet.exercised = false;
+  bet.itemID = event.params.itemId;
+  bet.requestExercise = false;
+  bet.save();
 }
 
 export function handleBetExerciseConfirmed(
   event: BetExerciseConfirmedEvent
 ): void {
-  let entity = new BetExerciseConfirmed(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.CSGoBets_id = event.params.id
-  entity.strike = event.params.strike
-  entity.timestamp = event.params.timestamp
-  entity.winner = event.params.winner
-  entity.payout = event.params.payout
-  entity.fee = event.params.fee
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
+  let bet = getOrCreateBet(event.params.id.toHexString());
+  let winner = getOrCreateUser(event.params.winner.toHexString());
+  let loser = getLoserFromBet(bet, winner.id);
+  let stats = getStats();
+  if (loser) {
+    loser.losses = loser.losses.plus(BIGINT_ONE);
+    loser.pnl = loser.pnl.minus(event.params.payout);
+    winner.wins = winner.wins.plus(BIGINT_ONE);
+    winner.pnl = winner.pnl.plus(event.params.payout);
+    stats.totalFees = stats.totalFees.plus(event.params.fee);
+    stats.totalAmount = stats.totalAmount.plus(event.params.payout);
+    bet.exercised = true;
+    bet.winner = winner.id;
+    bet.save();
+    winner.save();
+    loser.save();
+    stats.save();
+  }
 }
 
 export function handleBetExerciseRequested(
   event: BetExerciseRequestedEvent
 ): void {
-  let entity = new BetExerciseRequested(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.CSGoBets_id = event.params.id
-  entity.strike = event.params.strike
-  entity.timestamp = event.params.timestamp
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
+  let bet = getOrCreateBet(event.params.id.toHexString());
+  bet.requestExercise = true;
+  bet.save();
 }
 
 export function handleBetJoined(event: BetJoinedEvent): void {
-  let entity = new BetJoined(
-    event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.buyer = event.params.buyer
-  entity.CSGoBets_id = event.params.id
-  entity.strike = event.params.strike
-  entity.expiry = event.params.expiry
-  entity.amount = event.params.amount
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
+  let user = getOrCreateUser(event.params.buyer.toHexString());
+  let bet = getOrCreateBet(event.params.id.toHexString());
+  bet.buyer = user.id;
+  bet.save();
 }
 
 export function handleBetLeft(event: BetLeftEvent): void {
   let entity = new BetLeft(
     event.transaction.hash.concatI32(event.logIndex.toI32())
-  )
-  entity.leaver = event.params.leaver
-  entity.CSGoBets_id = event.params.id
-
-  entity.blockNumber = event.block.number
-  entity.blockTimestamp = event.block.timestamp
-  entity.transactionHash = event.transaction.hash
-
-  entity.save()
+  );
+  entity.save();
 }
